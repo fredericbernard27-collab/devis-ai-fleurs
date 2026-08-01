@@ -233,6 +233,9 @@
             <div class="cloud-dot" id="s-cloud-dot"></div>
             <span id="s-cloud-label" style="color:var(--muted)">Entrez votre email pour activer la synchronisation cloud</span>
           </div>
+          <div style="margin-top:0.75rem">
+            <button type="button" onclick="loadFromCloud()" style="background:#e07b5a;color:white;border:none;border-radius:6px;padding:0.5rem 1rem;font-size:0.85rem;cursor:pointer;width:100%">⬇️ Charger mes paramètres depuis le cloud</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1056,6 +1059,33 @@ async function cloudLoad(email, pin) {
     if (!r.ok) return null;
     return await r.json();
   } catch(e) { return null; }
+}
+
+async function loadFromCloud() {
+  const email = document.getElementById('s-cloud-email').value.trim();
+  const pin   = document.getElementById('s-cloud-pin').value.trim();
+  if (!email || !pin) {
+    setCloudDot('error', 'Entrez votre email et votre PIN');
+    return;
+  }
+  setCloudDot('syncing', 'Chargement depuis le cloud…');
+  const remote = await cloudLoad(email, pin);
+  if (!remote || !remote._t) {
+    setCloudDot('error', 'Aucune donnée trouvée — vérifiez email et PIN');
+    return;
+  }
+  const { _t, ...cfg } = remote;
+  document.getElementById('s-name').value     = cfg.name     || '';
+  document.getElementById('s-tagline').value  = cfg.tagline  || '';
+  document.getElementById('s-address').value  = cfg.address  || '';
+  document.getElementById('s-city').value     = cfg.city     || '';
+  document.getElementById('s-phone').value    = cfg.phone    || '';
+  document.getElementById('s-email').value    = cfg.email    || '';
+  document.getElementById('s-tva').value      = cfg.tva      ?? 20;
+  document.getElementById('s-validity').value = cfg.validity ?? 30;
+  document.getElementById('s-deposit').value  = cfg.deposit  ?? 30;
+  document.getElementById('s-siret').value    = cfg.siret    || '';
+  setCloudDot('ok', '✓ Paramètres chargés — cliquez Enregistrer pour confirmer');
 }
 
 async function initCloudSync() {
