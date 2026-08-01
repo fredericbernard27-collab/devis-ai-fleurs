@@ -222,6 +222,21 @@
         </div>
       </div>
       <div>
+        <div class="settings-section">Intelligence Artificielle</div>
+        <div class="settings-row" style="margin-top:0.5rem">
+          <div class="settings-field full">
+            <label>Fournisseur IA</label>
+            <select id="s-ai-provider" style="padding:0.45rem 0.6rem;border:1px solid #e2c4c4;border-radius:6px;font-size:0.9rem;background:white;width:100%">
+              <option value="openrouter">OpenRouter (recommandé — Claude, Gemini, GPT…)</option>
+              <option value="openai">OpenAI (GPT-4o)</option>
+              <option value="google">Google Gemini</option>
+            </select>
+          </div>
+          <div class="settings-field full"><label>Clé API IA</label><input id="s-ai-key" type="password" placeholder="sk-or-… / sk-… / AIzaSy…" style="background:white"></div>
+          <div class="settings-field full"><label>Modèle IA (laisser vide pour défaut)</label><input id="s-ai-model" type="text" placeholder="anthropic/claude-haiku-4-5" style="background:white"></div>
+        </div>
+      </div>
+      <div>
         <div class="settings-section">Synchronisation automatique entre appareils</div>
         <div class="cloud-box" style="margin-top:0.5rem">
           <div class="settings-row" style="margin-top:0">
@@ -806,39 +821,131 @@ function applyClientInfo(raw) {
   }
 }
 
-function analyzeInput() {
+async function analyzeInput() {
   const raw = document.getElementById('ai-input').value.trim();
   if (!raw) { setAIStatus('Veuillez entrer une description.', 'warn'); return; }
 
-  const matched = parseDescription(raw);
-  const count = Object.keys(matched).length;
-
-  if (!count) {
-    setAIStatus('Aucune prestation reconnue. Essayez : « arche fleurie », « centres de table classiques », « bouquet de mariée »…', 'warn');
+  const cfg = getSettings();
+  if (!cfg.ai_key) {
+    setAIStatus('⚠️ Clé API IA non configurée — allez dans Paramètres > Intelligence Artificielle.', 'warn');
     return;
   }
 
-  Object.entries(matched).forEach(([id, qty]) => setQty(id, qty));
-  applyClientInfo(raw);
+  setAIStatus('⏳ Analyse en cours…', '');
+  document.querySelector('.ai-btn-analyze').disabled = true;
 
-  CATEGORIES.forEach((cat, i) => {
-    if (cat.items.some(it => matched[it.id])) {
-      const body = document.getElementById(`cat-${i}`);
-      const tog  = document.getElementById(`toggle-${i}`);
-      if (!body.classList.contains('open')) {
-        body.classList.add('open');
-        tog.classList.add('open');
+  try {
+    const catalogText = CATEGORIES.map(cat =>
+      `## ${cat.name}\n` + cat.items.map(it => `- [${it.id}] ${it.name} (${it.price}€)`).join('\n')
+    ).join('\n\n');
+
+    const systemPrompt = `Tu es un assistant expert en fleurs de mariage pour un fleuriste professionnel.
+Tu analyses les descriptions de mariage (dictées ou écrites) pour en extraire des informations structurées.
+Tu réponds UNIQUEMENT avec un JSON valide, sans markdown, sans explication.`;
+
+    const userPrompt = `Texte à analyser :
+"""
+${raw}
+"""
+
+Catalogue de produits disponibles :
+${catalogText}
+
+Extrais les informations et retourne ce JSON (toutes les clés sont obligatoires) :
+{
+  "client": {
+    "names": "Prénoms et noms des mariés ou null",
+    "wedding_date": "YYYY-MM-DD ou null",
+    "email": "adresse email ou null",
+    "phone": "numéro de téléphone ou null",
+    "venue": "lieu de réception ou null",
+    "notes": "style floral, thème, couleurs, commentaires ou null"
+  },
+  "items": [
+    {
+      "product_id": "ID du produit du catalogue (entre crochets) ou null",
+      "custom_name": "nom libre si pas dans catalogue ou null",
+      "quantity": 1,
+      "matched_text": "extrait du texte original"
+    }
+  ],
+  "unrecognized": ["éléments demandés mais absents du catalogue"]
+}
+
+Règles : quantité doit être un entier positif. Réponds uniquement avec le JSON.`;
+
+    const providerMap = {
+      openrouter: { url: 'https://openrouter.ai/api/v1', model: cfg.ai_model || 'anthropic/claude-haiku-4-5' },
+      openai:     { url: 'https://api.openai.com/v1',    model: cfg.ai_model || 'gpt-4o-mini' },
+      google:     { url: 'https://openrouter.ai/api/v1', model: cfg.ai_model || 'google/gemini-flash-1.5' }
+    };
+    const { url, model } = providerMap[cfg.ai_provider] || providerMap.openrouter;
+
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.ai_key}` };
+    if (cfg.ai_provider === 'openrouter') {
+      headers['HTTP-Referer'] = window.location.origin;
+      headers['X-Title'] = 'Devis AI Fleurs de Mariage';
+    }
+
+    const resp = await fetch(`${url}/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+        temperature: 0.1,
+        max_tokens: 2000
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erreur API (${resp.status})`);
+    }
+
+    const data = await resp.json();
+    let rawJson = data.choices?.[0]?.message?.content?.trim() || '';
+    if (rawJson.includes('```')) rawJson = rawJson.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    const parsed = JSON.parse(rawJson);
+
+    // Appliquer les informations client
+    const c = parsed.client || {};
+    if (c.names)        { const el = document.getElementById('c-name');  if (el && !el.value) el.value = c.names; }
+    if (c.wedding_date) { const el = document.getElementById('c-date');  if (el && !el.value) el.value = c.wedding_date; }
+    if (c.email)        { const el = document.getElementById('c-email'); if (el && !el.value) el.value = c.email; }
+    if (c.phone)        { const el = document.getElementById('c-phone'); if (el && !el.value) el.value = c.phone; }
+    if (c.venue)        { const el = document.getElementById('c-venue'); if (el && !el.value) el.value = c.venue; }
+    if (c.notes)        { const el = document.getElementById('c-notes'); if (el && !el.value) el.value = c.notes; }
+
+    // Appliquer les produits reconnus
+    let count = 0;
+    for (const item of (parsed.items || [])) {
+      if (item.product_id) {
+        setQty(item.product_id, item.quantity || 1);
+        count++;
       }
     }
-  });
 
-  const preview = Object.entries(matched).slice(0, 4)
-    .map(([id, qty]) => { const it = findItem(id); return it ? `${qty}× ${it.name}` : ''; })
-    .filter(Boolean).join(', ');
-  const more = count > 4 ? ` + ${count - 4} autre${count - 4 > 1 ? 's' : ''}` : '';
-  setAIStatus(`✓ ${count} prestation${count > 1 ? 's' : ''} identifiée${count > 1 ? 's' : ''} : ${preview}${more}.`, 'success');
+    // Ouvrir les catégories concernées
+    CATEGORIES.forEach((cat, i) => {
+      if (cat.items.some(it => (parsed.items || []).find(p => p.product_id === it.id))) {
+        const body = document.getElementById(`cat-${i}`);
+        const tog  = document.getElementById(`toggle-${i}`);
+        if (body && !body.classList.contains('open')) { body.classList.add('open'); tog.classList.add('open'); }
+      }
+    });
 
-  document.getElementById('categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const unrecog = (parsed.unrecognized || []).filter(Boolean);
+    let msg = `✓ ${count} prestation${count > 1 ? 's' : ''} identifiée${count > 1 ? 's' : ''} par l'IA.`;
+    if (unrecog.length) msg += ` Non trouvé dans le catalogue : ${unrecog.join(', ')}.`;
+    setAIStatus(msg, 'success');
+    document.getElementById('categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch(e) {
+    setAIStatus('❌ Erreur IA : ' + e.message, 'warn');
+  } finally {
+    document.querySelector('.ai-btn-analyze').disabled = false;
+  }
 }
 
 function clearAIInput() {
@@ -931,16 +1038,19 @@ toggleCat(0);
 const SETTINGS_KEY = 'devisai_settings';
 
 const SETTINGS_DEFAULTS = {
-  name:     'Fleurs de Mariage',
-  tagline:  'Votre fleuriste événementiel',
-  address:  '123 rue des Roses',
-  city:     '75001 Paris',
-  phone:    '',
-  email:    'contact@fleursmariage.fr',
-  tva:      20,
-  validity: 30,
-  deposit:  30,
-  siret:    ''
+  name:        'Fleurs de Mariage',
+  tagline:     'Votre fleuriste événementiel',
+  address:     '123 rue des Roses',
+  city:        '75001 Paris',
+  phone:       '',
+  email:       'contact@fleursmariage.fr',
+  tva:         20,
+  validity:    30,
+  deposit:     30,
+  siret:       '',
+  ai_provider: 'openrouter',
+  ai_key:      '',
+  ai_model:    ''
 };
 
 function loadSettings() {
@@ -968,6 +1078,9 @@ function openSettings() {
   document.getElementById('s-validity').value   = cfg.validity;
   document.getElementById('s-deposit').value    = cfg.deposit;
   document.getElementById('s-siret').value      = cfg.siret;
+  document.getElementById('s-ai-provider').value = cfg.ai_provider || 'openrouter';
+  document.getElementById('s-ai-key').value      = cfg.ai_key      || '';
+  document.getElementById('s-ai-model').value    = cfg.ai_model    || '';
   const cloudEmail = localStorage.getItem('devisai_cloud_email') || '';
   const cloudPin   = localStorage.getItem('devisai_cloud_pin')   || '';
   document.getElementById('s-cloud-email').value = cloudEmail;
@@ -990,10 +1103,13 @@ function _readSettingsForm() {
     city:     document.getElementById('s-city').value.trim()     || SETTINGS_DEFAULTS.city,
     phone:    document.getElementById('s-phone').value.trim(),
     email:    document.getElementById('s-email').value.trim()    || SETTINGS_DEFAULTS.email,
-    tva:      parseFloat(document.getElementById('s-tva').value)     || SETTINGS_DEFAULTS.tva,
-    validity: parseInt(document.getElementById('s-validity').value)  || SETTINGS_DEFAULTS.validity,
-    deposit:  parseInt(document.getElementById('s-deposit').value)   || SETTINGS_DEFAULTS.deposit,
-    siret:    document.getElementById('s-siret').value.trim()
+    tva:         parseFloat(document.getElementById('s-tva').value)     || SETTINGS_DEFAULTS.tva,
+    validity:    parseInt(document.getElementById('s-validity').value)  || SETTINGS_DEFAULTS.validity,
+    deposit:     parseInt(document.getElementById('s-deposit').value)   || SETTINGS_DEFAULTS.deposit,
+    siret:       document.getElementById('s-siret').value.trim(),
+    ai_provider: document.getElementById('s-ai-provider').value || 'openrouter',
+    ai_key:      document.getElementById('s-ai-key').value.trim(),
+    ai_model:    document.getElementById('s-ai-model').value.trim()
   };
 }
 
@@ -1081,10 +1197,13 @@ async function loadFromCloud() {
   document.getElementById('s-city').value     = cfg.city     || '';
   document.getElementById('s-phone').value    = cfg.phone    || '';
   document.getElementById('s-email').value    = cfg.email    || '';
-  document.getElementById('s-tva').value      = cfg.tva      ?? 20;
-  document.getElementById('s-validity').value = cfg.validity ?? 30;
-  document.getElementById('s-deposit').value  = cfg.deposit  ?? 30;
-  document.getElementById('s-siret').value    = cfg.siret    || '';
+  document.getElementById('s-tva').value        = cfg.tva         ?? 20;
+  document.getElementById('s-validity').value   = cfg.validity    ?? 30;
+  document.getElementById('s-deposit').value    = cfg.deposit     ?? 30;
+  document.getElementById('s-siret').value      = cfg.siret       || '';
+  document.getElementById('s-ai-provider').value = cfg.ai_provider || 'openrouter';
+  document.getElementById('s-ai-key').value      = cfg.ai_key      || '';
+  document.getElementById('s-ai-model').value    = cfg.ai_model    || '';
   setCloudDot('ok', '✓ Paramètres chargés — cliquez Enregistrer pour confirmer');
 }
 
