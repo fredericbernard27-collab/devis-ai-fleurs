@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devis AI — Fleurs de Mariage</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --rose: #c8735a;
+    --rose-light: #f5e6e0;
+    --rose-dark: #a0533d;
+    --bg: #faf8f6;
+    --card: #ffffff;
+    --text: #2d2d2d;
+    --muted: #7a7a7a;
+    --border: #e0d8d2;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { background: var(--rose); color: white; padding: 1.25rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 1.4rem; font-weight: 600; }
+  header h1 span { opacity: 0.7; font-weight: 400; font-size: 0.9rem; margin-left: 0.5rem; }
+
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  /* CLIENT CARD */
+  .client-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--shadow); }
+  .client-card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.85rem; }
+  .client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .client-grid label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.2rem; }
+  .client-grid input, .client-grid textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.65rem; font-size: 0.88rem; font-family: inherit; background: var(--bg); transition: border-color 0.15s; }
+  .client-grid input:focus, .client-grid textarea:focus { outline: none; border-color: var(--rose); }
+  .client-grid .span2 { grid-column: span 2; }
+
+  /* CATEGORY */
+  .category { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 1rem; box-shadow: var(--shadow); overflow: hidden; }
+  .cat-header { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.1rem; cursor: pointer; user-select: none; }
+  .cat-header:hover { background: var(--rose-light); }
+  .cat-title { font-size: 0.95rem; font-weight: 600; }
+  .cat-badge { font-size: 0.75rem; background: var(--rose-light); color: var(--rose-dark); padding: 0.2rem 0.55rem; border-radius: 20px; font-weight: 600; display: none; }
+  .cat-toggle { color: var(--muted); font-size: 0.75rem; transition: transform 0.2s; }
+  .cat-toggle.open { transform: rotate(180deg); }
+  .cat-body { display: none; border-top: 1px solid var(--border); }
+  .cat-body.open { display: block; }
+
+  /* ITEM */
+  .item { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.75rem; padding: 0.6rem 1.1rem; border-bottom: 1px solid #f0ebe7; }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: #fdf9f7; }
+  .item-name { font-size: 0.87rem; }
+  .item-price { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+  .qty-ctrl { display: flex; align-items: center; gap: 0.3rem; }
+  .qty-ctrl button { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 5px; background: white; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+  .qty-ctrl button:hover { background: var(--rose-light); border-color: var(--rose); }
+  .qty-ctrl input { width: 42px; text-align: center; border: 1px solid var(--border); border-radius: 5px; padding: 0.25rem; font-size: 0.85rem; font-family: inherit; }
+  .qty-ctrl input:focus { outline: none; border-color: var(--rose); }
+
+  /* SIDEBAR */
+  .sidebar { position: sticky; top: 1.5rem; height: fit-content; }
+  .quote-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+  .quote-card h2 { padding: 1rem 1.25rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .quote-lines { padding: 0.5rem 0; max-height: 400px; overflow-y: auto; }
+  .quote-empty { padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
+  .quote-line { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: start; padding: 0.5rem 1.25rem; font-size: 0.83rem; border-bottom: 1px solid #f5f0ec; }
+  .quote-line:last-child { border-bottom: none; }
+  .ql-name { color: var(--text); line-height: 1.3; }
+  .ql-meta { color: var(--muted); font-size: 0.76rem; }
+  .ql-amount { font-weight: 600; color: var(--rose-dark); white-space: nowrap; }
+  .quote-total { border-top: 2px solid var(--rose); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+  .quote-total span { font-size: 0.85rem; color: var(--muted); }
+  .quote-total strong { font-size: 1.2rem; color: var(--rose-dark); }
+  .btn-generate { display: block; width: calc(100% - 2.5rem); margin: 0 1.25rem 1rem; padding: 0.75rem; background: var(--rose); color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-generate:hover { background: var(--rose-dark); }
+  .btn-generate:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-reset { display: block; width: calc(100% - 2.5rem); margin: 0 1.25rem 1rem; padding: 0.5rem; background: white; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; }
+  .btn-reset:hover { background: var(--rose-light); color: var(--rose-dark); border-color: var(--rose); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-start; justify-content: center; padding: 2rem; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 800px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .modal-header h2 { font-size: 1rem; font-weight: 600; }
+  .modal-actions { display: flex; gap: 0.75rem; }
+  .btn-print { padding: 0.5rem 1.1rem; background: var(--rose); color: white; border: none; border-radius: 7px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+  .btn-print:hover { background: var(--rose-dark); }
+  .btn-close { padding: 0.5rem 1rem; background: white; color: var(--text); border: 1px solid var(--border); border-radius: 7px; font-size: 0.88rem; cursor: pointer; }
+  .btn-close:hover { background: var(--bg); }
+
+  /* DEVIS DOCUMENT */
+  #devis-doc { padding: 2.5rem; }
+  .doc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem; }
+  .doc-brand { font-size: 1.6rem; font-weight: 700; color: var(--rose); }
+  .doc-brand small { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); margin-top: 0.15rem; }
+  .doc-meta { text-align: right; font-size: 0.82rem; color: var(--muted); line-height: 1.8; }
+  .doc-meta strong { color: var(--text); font-size: 1rem; display: block; }
+  .doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+  .doc-party h4 { font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.4rem; }
+  .doc-party p { font-size: 0.87rem; line-height: 1.7; }
+  .doc-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 0.87rem; }
+  .doc-table th { background: var(--rose); color: white; text-align: left; padding: 0.6rem 0.85rem; font-size: 0.77rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .doc-table td { padding: 0.55rem 0.85rem; border-bottom: 1px solid #f0ebe7; }
+  .doc-table tr:hover td { background: #fdf9f7; }
+  .doc-table .num { text-align: right; }
+  .doc-cat-row td { background: var(--rose-light); font-weight: 600; font-size: 0.8rem; color: var(--rose-dark); padding: 0.4rem 0.85rem; }
+  .doc-totals { margin-left: auto; width: 260px; font-size: 0.88rem; border-collapse: collapse; }
+  .doc-totals td { padding: 0.35rem 0.6rem; }
+  .doc-totals tr:last-child td { font-weight: 700; font-size: 1rem; border-top: 2px solid var(--rose); padding-top: 0.6rem; color: var(--rose-dark); }
+  .doc-validity { background: var(--rose-light); border-left: 3px solid var(--rose); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin-top: 1.5rem; font-size: 0.82rem; color: var(--rose-dark); }
+  .doc-footer { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); line-height: 1.7; }
+
+  /* AI INPUT CARD */
+  .ai-card { background: linear-gradient(135deg, #fff8f6 0%, #fff 100%); border: 1.5px solid var(--rose); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 2px 12px rgba(200,115,90,0.1); }
+  .ai-card-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem; }
+  .ai-card-title { font-size: 0.95rem; font-weight: 600; color: var(--rose-dark); }
+  .ai-badge { background: var(--rose); color: white; font-size: 0.64rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 4px; letter-spacing: 0.07em; }
+  .ai-hint { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.85rem; line-height: 1.5; }
+  .ai-input-wrap { position: relative; }
+  .ai-textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 3.2rem 0.65rem 0.75rem; font-size: 0.88rem; font-family: inherit; background: white; resize: vertical; min-height: 95px; line-height: 1.55; transition: border-color 0.15s; }
+  .ai-textarea:focus { outline: none; border-color: var(--rose); }
+  .ai-mic-btn { position: absolute; right: 0.6rem; bottom: 0.6rem; width: 38px; height: 38px; border: 1.5px solid var(--border); border-radius: 50%; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all 0.15s; touch-action: manipulation; }
+  .ai-mic-btn:hover { border-color: var(--rose); color: var(--rose); background: var(--rose-light); }
+  .ai-mic-btn.recording { border-color: #e53e3e; color: white; background: #e53e3e; animation: pulse-mic 1.2s ease-in-out infinite; }
+  .ai-mic-btn svg { width: 17px; height: 17px; pointer-events: none; }
+  @keyframes pulse-mic { 0%,100%{box-shadow:0 0 0 0 rgba(229,62,62,0.5)} 50%{box-shadow:0 0 0 9px rgba(229,62,62,0)} }
+  .ai-status { min-height: 1.4rem; font-size: 0.78rem; color: var(--muted); margin: 0.4rem 0 0.1rem; line-height: 1.4; }
+  .ai-status.recording { color: #e53e3e; font-weight: 500; }
+  .ai-status.success { color: #2f855a; }
+  .ai-status.warn { color: #c05621; }
+  .ai-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.6rem; }
+  .ai-btn-clear { padding: 0.45rem 0.9rem; background: white; color: var(--muted); border: 1px solid var(--border); border-radius: 7px; font-size: 0.84rem; cursor: pointer; transition: all 0.15s; }
+  .ai-btn-clear:hover { background: var(--bg); color: var(--text); }
+  .ai-btn-analyze { padding: 0.5rem 1.25rem; background: var(--rose); color: white; border: none; border-radius: 7px; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .ai-btn-analyze:hover { background: var(--rose-dark); }
+
+  /* SETTINGS */
+  .btn-settings { background: rgba(255,255,255,0.2); color: white; border: 1.5px solid rgba(255,255,255,0.4); border-radius: 7px; padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 0.4rem; }
+  .btn-settings:hover { background: rgba(255,255,255,0.35); }
+  .settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-start; justify-content: center; padding: 2rem; overflow-y: auto; }
+  .settings-overlay.open { display: flex; }
+  .settings-modal { background: white; border-radius: 12px; max-width: 560px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .settings-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .settings-header h2 { font-size: 1rem; font-weight: 600; }
+  .settings-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.1rem; }
+  .settings-section { font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.3rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
+  .settings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .settings-field label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.2rem; }
+  .settings-field input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.65rem; font-size: 0.88rem; font-family: inherit; background: var(--bg); }
+  .settings-field input:focus { outline: none; border-color: var(--rose); }
+  .settings-field.full { grid-column: span 2; }
+  .cloud-box { background: var(--rose-light); border-radius: 8px; padding: 1rem; }
+  .cloud-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; margin-top: 0.6rem; min-height: 1.3rem; }
+  .cloud-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; flex-shrink: 0; transition: background 0.3s; }
+  .cloud-dot.ok      { background: #48bb78; }
+  .cloud-dot.syncing { background: #ed8936; animation: blink 0.8s ease-in-out infinite; }
+  .cloud-dot.error   { background: #fc8181; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .sync-indicator { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; opacity: 0.85; color: white; }
+  .sync-indicator .cloud-dot { width: 7px; height: 7px; }
+  .settings-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.6rem; }
+  .settings-saved { font-size: 0.8rem; color: #2f855a; align-self: center; margin-right: auto; opacity: 0; transition: opacity 0.3s; }
+  .settings-saved.show { opacity: 1; }
+
+  @media (max-width: 600px) {
+    header { padding: 0.9rem 1rem; }
+    header h1 { font-size: 1.1rem; }
+    header h1 span { display: none; }
+    .btn-settings { padding: 0.5rem 0.7rem; font-size: 0.8rem; }
+    .layout { padding: 1rem; gap: 1rem; }
+    .settings-row { grid-template-columns: 1fr; }
+    .settings-field.full { grid-column: span 1; }
+    .client-grid { grid-template-columns: 1fr; }
+    .client-grid .span2 { grid-column: span 1; }
+    .settings-modal { margin: 0.5rem; }
+    .settings-body { padding: 1rem; }
+  }
+
+  @media print {
+    header, .main-col, .modal-header { display: none !important; }
+    .modal-overlay { display: flex !important; position: static; padding: 0; background: none; }
+    .modal { box-shadow: none; max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Devis AI <span>— Fleurs de Mariage</span></h1>
+  <div style="display:flex;align-items:center;gap:1rem">
+    <div class="sync-indicator" id="header-sync" style="display:none">
+      <div class="cloud-dot" id="header-dot"></div>
+      <span id="header-sync-label">Synchronisation…</span>
+    </div>
+    <button class="btn-settings" onclick="openSettings()">⚙️ Paramètres</button>
+  </div>
+</header>
+
+<!-- SETTINGS MODAL -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-modal">
+    <div class="settings-header">
+      <h2>⚙️ Paramètres — Informations de votre entreprise</h2>
+      <button class="btn-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-body">
+      <div>
+        <div class="settings-section">Votre entreprise</div>
+        <div class="settings-row" style="margin-top:0.5rem">
+          <div class="settings-field full"><label>Nom de l'entreprise</label><input id="s-name" type="text" placeholder="Fleurs de Mariage"></div>
+          <div class="settings-field full"><label>Slogan / sous-titre</label><input id="s-tagline" type="text" placeholder="Votre fleuriste événementiel"></div>
+          <div class="settings-field full"><label>Adresse</label><input id="s-address" type="text" placeholder="123 rue des Roses"></div>
+          <div class="settings-field"><label>Code postal &amp; Ville</label><input id="s-city" type="text" placeholder="75001 Paris"></div>
+          <div class="settings-field"><label>Téléphone</label><input id="s-phone" type="tel" placeholder="01 23 45 67 89"></div>
+          <div class="settings-field full"><label>Email</label><input id="s-email" type="email" placeholder="contact@fleursmariage.fr"></div>
+          <div class="settings-field"><label>TVA (%)</label><input id="s-tva" type="number" min="0" max="100" placeholder="20"></div>
+          <div class="settings-field"><label>Validité du devis (jours)</label><input id="s-validity" type="number" min="1" placeholder="30"></div>
+          <div class="settings-field"><label>Acompte à la signature (%)</label><input id="s-deposit" type="number" min="0" max="100" placeholder="30"></div>
+          <div class="settings-field"><label>N° SIRET / identification</label><input id="s-siret" type="text" placeholder="123 456 789 00010"></div>
+        </div>
+      </div>
+      <div>
+        <div class="settings-section">Synchronisation automatique entre appareils</div>
+        <div class="cloud-box" style="margin-top:0.5rem">
+          <div class="settings-row" style="margin-top:0">
+            <div class="settings-field full"><label>Votre adresse email (identifiant de compte)</label><input id="s-cloud-email" type="email" placeholder="vous@email.fr" style="background:white"></div>
+            <div class="settings-field"><label>Code PIN (4 à 8 chiffres)</label><input id="s-cloud-pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" style="background:white;letter-spacing:0.2em"></div>
+            <div class="settings-field" style="align-self:end;padding-bottom:2px"><p style="font-size:0.75rem;color:var(--rose-dark);line-height:1.4">Email + PIN ensemble protègent vos données. Mémorisez votre PIN — il ne peut pas être récupéré.</p></div>
+          </div>
+          <div class="cloud-status">
+            <div class="cloud-dot" id="s-cloud-dot"></div>
+            <span id="s-cloud-label" style="color:var(--muted)">Entrez votre email pour activer la synchronisation cloud</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <span class="settings-saved" id="s-saved-msg">✓ Paramètres enregistrés</span>
+      <button class="btn-close" onclick="closeSettings()">Annuler</button>
+      <button class="btn-print" onclick="saveSettings()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="main-col">
+    <!-- AI INPUT CARD -->
+    <div class="ai-card">
+      <div class="ai-card-header">
+        <span class="ai-card-title">✨ Description libre</span>
+        <span class="ai-badge">IA</span>
+      </div>
+      <p class="ai-hint">Décrivez votre mariage en texte libre ou par la voix — l'application identifie automatiquement les prestations et remplit le devis.</p>
+      <div class="ai-input-wrap">
+        <textarea id="ai-input" class="ai-textarea" rows="4"
+          placeholder="Ex : « Mariage en Provence pour 120 personnes le 14 juin 2026. Je souhaite une arche fleurie premium, 15 centres de table classiques, un bouquet de mariée en cascade, des boutonnières pour 5 témoins, un mur floral pour photos et une décoration de bar… »"></textarea>
+        <button class="ai-mic-btn" id="ai-mic-btn" onclick="toggleMic()" title="Dicter par microphone" aria-label="Microphone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+      </div>
+      <div class="ai-status" id="ai-status"></div>
+      <div class="ai-actions">
+        <button class="ai-btn-clear" onclick="clearAIInput()">Effacer</button>
+        <button class="ai-btn-analyze" onclick="analyzeInput()">Générer le devis ✨</button>
+      </div>
+    </div>
+
+    <div class="client-card">
+      <h2>Informations client</h2>
+      <div class="client-grid">
+        <div><label>Prénom &amp; Nom des mariés</label><input id="c-nom" type="text" placeholder="Marie &amp; Pierre Dupont"></div>
+        <div><label>Date du mariage</label><input id="c-date" type="date"></div>
+        <div><label>Email</label><input id="c-email" type="email" placeholder="marie@exemple.fr"></div>
+        <div><label>Téléphone</label><input id="c-tel" type="tel" placeholder="06 00 00 00 00"></div>
+        <div class="span2"><label>Lieu de réception</label><input id="c-lieu" type="text" placeholder="Château de la Rose, Bordeaux"></div>
+        <div class="span2"><label>Notes / Thème floral</label><textarea id="c-notes" rows="2" placeholder="Style bohème, palette blanc &amp; vert sauge…"></textarea></div>
+      </div>
+    </div>
+    <div id="categories"></div>
+  </div>
+
+  <div class="sidebar">
+    <div class="quote-card">
+      <h2>Récapitulatif</h2>
+      <div class="quote-lines" id="quote-lines">
+        <p class="quote-empty" id="quote-empty">Sélectionnez des articles pour commencer</p>
+      </div>
+      <div class="quote-total">
+        <span>Total estimatif HT</span>
+        <strong id="total-display">0 €</strong>
+      </div>
+      <button class="btn-generate" id="btn-generate" onclick="openQuote()" disabled>Générer le devis</button>
+      <button class="btn-reset" onclick="resetAll()">Tout effacer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Aperçu du devis</h2>
+      <div class="modal-actions">
+        <button class="btn-print" onclick="window.print()">Imprimer / PDF</button>
+        <button class="btn-close" onclick="closeQuote()">Fermer</button>
+      </div>
+    </div>
+    <div id="devis-doc"></div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = [
+  {
+    name: "Mariée",
+    icon: "💐",
+    items: [
+      { name: "Bouquet de la mariée",                          price: 180 },
+      { name: "Bouquet de la mariée retombant en cascade",     price: 350 },
+      { name: "Bouquet de lancer",                             price: 40  },
+      { name: "Couronne de fleurs",                            price: 80  },
+      { name: "Peigne fleuri",                                 price: 40  },
+      { name: "Serre-tête fleuri",                             price: 60  },
+      { name: "Bracelet floral",                               price: 30  },
+      { name: "Collier floral",                                price: 90  },
+      { name: "Boucles d'oreilles florales",                   price: 30  },
+      { name: "Ceinture fleurie",                              price: 90  },
+      { name: "Accessoires pour voile",                        price: 50  },
+      { name: "Corsage floral",                                price: 40  },
+    ]
+  },
+  {
+    name: "Marié et cortège",
+    icon: "🌿",
+    items: [
+      { name: "Boutonnière du marié",                          price: 20  },
+      { name: "Bracelets floraux des mamans et grand-mères (corsage)", price: 35 },
+      { name: "Boutonnières des pères",                        price: 15  },
+      { name: "Boutonnières des témoins",                      price: 15  },
+      { name: "Bracelets floraux des demoiselles d'honneur",   price: 30  },
+      { name: "Bouquets des demoiselles d'honneur",            price: 60  },
+      { name: "Couronnes des enfants d'honneur",               price: 40  },
+      { name: "Paniers de pétales pour les enfants d'honneur", price: 30  },
+    ]
+  },
+  {
+    name: "Cérémonie",
+    icon: "⛪",
+    items: [
+      { name: "Arche fleurie classique",                       price: 800  },
+      { name: "Arche fleurie premium",                         price: 1800 },
+      { name: "Arche ronde (moon gate)",                       price: 1000 },
+      { name: "Demi-arche asymétrique",                        price: 700  },
+      { name: "Demi-arche asymétrique premium",                price: 1200 },
+      { name: "Houppa fleurie",                                price: 900  },
+      { name: "Allée fleurie (par mètre)",                     price: 250  },
+      { name: "Prairie fleurie (par m²)",                      price: 500  },
+      { name: "Totems floraux",                                price: 400  },
+      { name: "Totem fleural premium",                         price: 700  },
+      { name: "Colonnes florales",                             price: 300  },
+      { name: "Décoration d'autel",                            price: 180  },
+      { name: "Décoration de pupitre",                         price: 70   },
+      { name: "Décoration du pupitre cérémonie laïque",        price: 80   },
+      { name: "Fauteuils des mariés décorés (la paire)",       price: 100  },
+      { name: "Noeud et fleur de banc (unité)",                price: 15   },
+      { name: "Composition florale de banc (unité)",           price: 35   },
+      { name: "Décoration du registre ou livre d'or",          price: 50   },
+      { name: "Jetée de pétales (au litre)",                   price: 80   },
+      { name: "Décoration de table de signature",              price: 120  },
+    ]
+  },
+  {
+    name: "Cocktail",
+    icon: "🥂",
+    items: [
+      { name: "Décoration du panneau de bienvenue",            price: 120  },
+      { name: "Décoration du chevalet de bienvenue",           price: 120  },
+      { name: "Décoration du plan de table",                   price: 120  },
+      { name: "Décoration du plan de table premium",           price: 250  },
+      { name: "Décoration de l'urne des mariés",               price: 90   },
+      { name: "Compositions sur mange-debout",                 price: 60   },
+      { name: "Décoration du bar",                             price: 250  },
+      { name: "Décoration de bar à cocktail",                  price: 250  },
+      { name: "Décoration du buffet",                          price: 250  },
+      { name: "Décoration de buffet prestige",                 price: 400  },
+      { name: "Décoration de buffet desserts",                 price: 250  },
+      { name: "Décoration du candy bar",                       price: 120  },
+      { name: "Décoration du coin photobooth",                 price: 350  },
+      { name: "Décor photobooth complet",                      price: 800  },
+      { name: "Mur floral pour photos",                        price: 1200 },
+      { name: "Cadre floral suspendu",                         price: 400  },
+    ]
+  },
+  {
+    name: "Réception",
+    icon: "🌸",
+    items: [
+      { name: "Composition de table d'honneur",                price: 250  },
+      { name: "Cascade florale de table des mariés",           price: 400  },
+      { name: "Centre de table classique",                     price: 90   },
+      { name: "Centre de table premium",                       price: 180  },
+      { name: "Centre de table XXL",                           price: 350  },
+      { name: "Centres de table suspendus",                    price: 180  },
+      { name: "Composition suspendue de table (unité)",        price: 300  },
+      { name: "Guirlandes végétales (par mètre)",              price: 50   },
+      { name: "Chemins de table végétaux (par mètre)",         price: 80   },
+      { name: "Chandeliers fleuris",                           price: 180  },
+      { name: "Soliflores",                                    price: 15   },
+      { name: "Décoration du gâteau (cake flowers)",           price: 50   },
+      { name: "Décoration du candy bar",                       price: 120  },
+      { name: "Décoration du livre d'or",                      price: 50   },
+      { name: "Décoration des chaises des mariés (la paire)",  price: 60   },
+      { name: "Mur végétal",                                   price: 1000 },
+      { name: "Mur végétal premium",                           price: 1500 },
+      { name: "Mur floral",                                    price: 1500 },
+      { name: "Suspension florale au plafond",                 price: 1200 },
+      { name: "Suspension florale aérienne XXL",               price: 1500 },
+      { name: "Nuage de fleurs suspendu",                      price: 1500 },
+      { name: "Lustre végétal",                                price: 800  },
+      { name: "Lustre floral suspendu",                        price: 900  },
+      { name: "Colonne Médicis fleurie",                       price: 250  },
+      { name: "Composition Médicis fleurie",                   price: 250  },
+      { name: "Colonne florale premium",                       price: 500  },
+      { name: "Structures métalliques fleuries",               price: 700  },
+      { name: "Escalier fleuri",                               price: 800  },
+      { name: "Escalier fleuri monumental",                    price: 1200 },
+      { name: "Entrée de salle fleurie",                       price: 500  },
+      { name: "Entrée de salle monumentale",                   price: 1000 },
+      { name: "Décor de scène ou piste de danse",              price: 1000 },
+    ]
+  },
+  {
+    name: "Véhicules",
+    icon: "🚗",
+    items: [
+      { name: "Capot fleuri",                                  price: 180  },
+      { name: "Décoration de capot premium",                   price: 350  },
+      { name: "Décoration de poignées de portes (la paire)",   price: 30   },
+      { name: "Décoration de rétroviseurs (la paire)",         price: 40   },
+      { name: "Décoration arrière de voiture",                 price: 80   },
+      { name: "Guirlandes végétales pour voiture",             price: 90   },
+      { name: "Bouquet pour voiture des mariés",               price: 180  },
+      { name: "Décoration de calèche ou véhicule ancien",      price: 300  },
+      { name: "Pétales pour sortie des mariés",                price: 50   },
+    ]
+  }
+];
+
+// Assign stable IDs
+CATEGORIES.forEach((cat, ci) => cat.items.forEach((it, ii) => { it.id = `${ci}-${ii}`; }));
+
+const quantities = {};
+
+function findItem(id) {
+  for (const cat of CATEGORIES)
+    for (const it of cat.items)
+      if (it.id === id) return it;
+  return null;
+}
+
+function selectedLines() {
+  return Object.entries(quantities)
+    .filter(([, q]) => q > 0)
+    .map(([id, q]) => ({ item: findItem(id), qty: q }))
+    .filter(x => x.item);
+}
+
+function getTotal() {
+  return selectedLines().reduce((s, { item, qty }) => s + item.price * qty, 0);
+}
+
+function setQty(id, val) {
+  const qty = Math.max(0, parseInt(val) || 0);
+  quantities[id] = qty;
+  const inp = document.getElementById(`qty-${id}`);
+  if (inp) inp.value = qty || '';
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const lines = selectedLines();
+  const container = document.getElementById('quote-lines');
+  const btn = document.getElementById('btn-generate');
+
+  if (!lines.length) {
+    container.innerHTML = '<p class="quote-empty">Sélectionnez des articles pour commencer</p>';
+    document.getElementById('total-display').textContent = '0 €';
+    btn.disabled = true;
+  } else {
+    btn.disabled = false;
+    container.innerHTML = lines.map(({ item, qty }) => `
+      <div class="quote-line">
+        <div>
+          <div class="ql-name">${item.name}</div>
+          <div class="ql-meta">× ${qty} — ${item.price.toLocaleString('fr-FR')} € / unité</div>
+        </div>
+        <div class="ql-amount">${(item.price * qty).toLocaleString('fr-FR')} €</div>
+      </div>
+    `).join('');
+    document.getElementById('total-display').textContent = getTotal().toLocaleString('fr-FR') + ' €';
+  }
+
+  CATEGORIES.forEach((cat, i) => {
+    const sel = cat.items.filter(it => (quantities[it.id] || 0) > 0).length;
+    const badge = document.getElementById(`badge-${i}`);
+    if (badge) { badge.textContent = sel > 0 ? `${sel} sél.` : ''; badge.style.display = sel > 0 ? '' : 'none'; }
+  });
+}
+
+function resetAll() {
+  Object.keys(quantities).forEach(k => delete quantities[k]);
+  document.querySelectorAll('.qty-ctrl input').forEach(i => i.value = '');
+  renderSidebar();
+}
+
+function renderCategories() {
+  document.getElementById('categories').innerHTML = CATEGORIES.map((cat, ci) => `
+    <div class="category">
+      <div class="cat-header" onclick="toggleCat(${ci})">
+        <span class="cat-title">${cat.icon} ${cat.name}</span>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <span class="cat-badge" id="badge-${ci}"></span>
+          <span class="cat-toggle" id="toggle-${ci}">▼</span>
+        </div>
+      </div>
+      <div class="cat-body" id="cat-${ci}">
+        ${cat.items.map(it => `
+          <div class="item">
+            <div class="item-name">${it.name}</div>
+            <div class="item-price">${it.price.toLocaleString('fr-FR')} €</div>
+            <div class="qty-ctrl">
+              <button onclick="setQty('${it.id}', (quantities['${it.id}']||0)-1)">−</button>
+              <input id="qty-${it.id}" type="number" min="0" placeholder="0"
+                onchange="setQty('${it.id}', this.value)"
+                oninput="setQty('${it.id}', this.value)">
+              <button onclick="setQty('${it.id}', (quantities['${it.id}']||0)+1)">+</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleCat(idx) {
+  document.getElementById(`cat-${idx}`).classList.toggle('open');
+  document.getElementById(`toggle-${idx}`).classList.toggle('open');
+}
+
+function openQuote() {
+  const lines = selectedLines();
+  if (!lines.length) return;
+
+  const nom    = document.getElementById('c-nom').value   || '—';
+  const date   = document.getElementById('c-date').value;
+  const email  = document.getElementById('c-email').value || '—';
+  const tel    = document.getElementById('c-tel').value   || '—';
+  const lieu   = document.getElementById('c-lieu').value  || '—';
+  const notes  = document.getElementById('c-notes').value;
+
+  const dateStr = date ? new Date(date).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) : '—';
+  const today   = new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+  const devisNum = 'DEV-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*9000)+1000);
+
+  const cfg = getSettings();
+  const tvaRate  = (cfg.tva ?? 20) / 100;
+  const totalHT  = getTotal();
+  const tva      = Math.round(totalHT * tvaRate);
+  const totalTTC = totalHT + tva;
+  const validite = new Date(Date.now() + (cfg.validity ?? 30)*24*60*60*1000).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+
+  // Group lines by category for the document
+  const byCategory = CATEGORIES.map(cat => ({
+    name: cat.name,
+    icon: cat.icon,
+    lines: lines.filter(({ item }) => cat.items.includes(item))
+  })).filter(g => g.lines.length > 0);
+
+  const tableRows = byCategory.map(g => `
+    <tr class="doc-cat-row"><td colspan="4">${g.icon} ${g.name}</td></tr>
+    ${g.lines.map(({ item, qty }) => `
+      <tr>
+        <td>${item.name}</td>
+        <td class="num">${qty}</td>
+        <td class="num">${item.price.toLocaleString('fr-FR')} €</td>
+        <td class="num">${(item.price * qty).toLocaleString('fr-FR')} €</td>
+      </tr>
+    `).join('')}
+  `).join('');
+
+  const prestataireLine = [cfg.address, cfg.city].filter(Boolean).join('<br>');
+  const contactLine     = [cfg.phone, cfg.email].filter(Boolean).join('<br>');
+  const siretLine       = cfg.siret ? `<br><small style="color:#aaa">SIRET : ${cfg.siret}</small>` : '';
+
+  document.getElementById('devis-doc').innerHTML = `
+    <div class="doc-top">
+      <div class="doc-brand">${cfg.name}<small>${cfg.tagline}</small></div>
+      <div class="doc-meta">
+        <strong>Devis n° ${devisNum}</strong>
+        Émis le ${today}<br>
+        Mariage prévu le ${dateStr}<br>
+        Lieu : ${lieu}
+      </div>
+    </div>
+    <div class="doc-parties">
+      <div class="doc-party">
+        <h4>Prestataire</h4>
+        <p><strong>${cfg.name}</strong><br>${prestataireLine}<br>${contactLine}${siretLine}</p>
+      </div>
+      <div class="doc-party">
+        <h4>Client</h4>
+        <p><strong>${nom}</strong><br>${email}<br>${tel}${notes ? '<br><em style="color:#888">' + notes + '</em>' : ''}</p>
+      </div>
+    </div>
+    <table class="doc-table">
+      <thead><tr>
+        <th style="width:55%">Prestation</th>
+        <th class="num">Qté</th>
+        <th class="num">Prix unit. HT</th>
+        <th class="num">Total HT</th>
+      </tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end">
+      <table class="doc-totals">
+        <tr><td>Sous-total HT</td><td class="num">${totalHT.toLocaleString('fr-FR')} €</td></tr>
+        <tr><td>TVA ${cfg.tva ?? 20} %</td><td class="num">${tva.toLocaleString('fr-FR')} €</td></tr>
+        <tr><td><strong>Total TTC</strong></td><td class="num"><strong>${totalTTC.toLocaleString('fr-FR')} €</strong></td></tr>
+      </table>
+    </div>
+    <div class="doc-validity">Ce devis est valable jusqu'au ${validite}. Un acompte de ${cfg.deposit ?? 30} % est demandé à la signature.</div>
+    <div class="doc-footer">
+      Les prix indiqués sont des prix moyens estimatifs. Le devis définitif peut varier selon le choix des fleurs, des saisons et des spécifications finales.<br>
+      Pour accepter ce devis, merci de nous retourner ce document signé avec la mention « Bon pour accord ».
+    </div>
+  `;
+
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeQuote() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeQuote();
+});
+
+// ===== AI ASSISTANT -- NLP Parser =====
+const WORD_NUMS = {
+  'un':1,'une':1,'deux':2,'trois':3,'quatre':4,'cinq':5,'six':6,
+  'sept':7,'huit':8,'neuf':9,'dix':10,'onze':11,'douze':12,
+  'quinze':15,'vingt':20,'trente':30,'quarante':40,'cinquante':50
+};
+
+function normText(s) {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/['’]/g, ' ').replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function singlify(s) {
+  return s.split(' ').map(w => (w.length > 3 && w.endsWith('s')) ? w.slice(0, -1) : w).join(' ');
+}
+
+// Whole-word check via index + adjacent-space (avoids new RegExp +  issues)
+function wordInStr(w, s) {
+  const i = s.indexOf(w);
+  if (i < 0) return false;
+  const lo = i === 0 || s[i - 1] === ' ';
+  const hi = i + w.length >= s.length || s[i + w.length] === ' ';
+  return lo && hi;
+}
+
+function wordPositions(word, textS) {
+  const out = [];
+  let from = 0;
+  while (true) {
+    const i = textS.indexOf(word, from);
+    if (i < 0) break;
+    const lo = i === 0 || textS[i - 1] === ' ';
+    const hi = i + word.length >= textS.length || textS[i + word.length] === ' ';
+    if (lo && hi) out.push(i);
+    from = i + 1;
+  }
+  return out;
+}
+
+function findQty(textS, nearPos) {
+  const tight = textS.slice(Math.max(0, nearPos - 11), nearPos + 2);
+  const clean = tight
+    .replace(/20\d{2}/g, '')
+    .replace(/\d{1,2}\s+(?:janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)/g, '');
+  const m = clean.match(/([1-9]\d?)/);
+  if (m) return parseInt(m[1]);
+  const wide = textS.slice(Math.max(0, nearPos - 20), nearPos + 3);
+  for (const [w, v] of Object.entries(WORD_NUMS)) {
+    if (wordInStr(w, wide)) return v;
+  }
+  return 1;
+}
+
+function parseDescription(raw) {
+  const textS = singlify(normText(raw));
+  const all   = [];
+  CATEGORIES.forEach(cat => cat.items.forEach(it => all.push(it)));
+  all.sort((a, b) => normText(b.name).length - normText(a.name).length);
+
+  const SKIP    = new Set(['pour','avec','dans','sous','sur','les','des','par','aux','leur','une','etre','avoir','mais']);
+  const matched = {};
+  const used    = [];
+  const overlaps = (i, l) => used.some(u => i < u.e && i + l > u.s);
+
+  for (const item of all) {
+    const nameS = singlify(normText(item.name));
+
+    // Pass 1: exact substring match
+    const idx = textS.indexOf(nameS);
+    if (idx >= 0 && !overlaps(idx, nameS.length)) {
+      used.push({ s: idx, e: idx + nameS.length });
+      matched[item.id] = findQty(textS, idx);
+      continue;
+    }
+    if (matched[item.id]) continue;
+
+    // Pass 2: proximity keyword match (all keywords within +-15 chars of anchor)
+    const words = nameS.split(' ').filter(w => w.length >= 3 && !SKIP.has(w));
+    if (words.length < 2) continue;
+
+    for (const pos of wordPositions(words[0], textS)) {
+      const win = textS.slice(Math.max(0, pos - 15), Math.min(textS.length, pos + nameS.length + 15));
+      if (words.every(w => wordInStr(w, win)) && !overlaps(pos, words[0].length)) {
+        used.push({ s: pos, e: pos + nameS.length });
+        matched[item.id] = findQty(textS, pos);
+        break;
+      }
+    }
+  }
+
+  // Pass 3: base-keyword match for unqualified terms
+  // e.g. "10 centres de table" -> cheapest "Centre de table classique"
+  const baseCandidates = {};
+  for (const item of all) {
+    if (matched[item.id]) continue;
+    const nameS = singlify(normText(item.name));
+    const words = nameS.split(' ').filter(w => w.length >= 3 && !SKIP.has(w));
+    if (words.length < 3) continue;
+    const baseKey = words.slice(0, -1).join('|');
+    if (!baseCandidates[baseKey]) baseCandidates[baseKey] = [];
+    baseCandidates[baseKey].push(item);
+  }
+  for (const [baseKey, items] of Object.entries(baseCandidates)) {
+    if (items.some(it => matched[it.id])) continue;
+    const bWords = baseKey.split('|');
+    const sampleS = singlify(normText(items[0].name));
+    for (const pos of wordPositions(bWords[0], textS)) {
+      const win = textS.slice(Math.max(0, pos - 15), Math.min(textS.length, pos + sampleS.length + 15));
+      if (bWords.every(w => wordInStr(w, win)) && !overlaps(pos, bWords[0].length)) {
+        const cheapest = items.slice().sort((a, b) => a.price - b.price)[0];
+        used.push({ s: pos, e: pos + sampleS.length });
+        matched[cheapest.id] = findQty(textS, pos);
+        break;
+      }
+    }
+  }
+
+  return matched;
+}
+function extractClientInfo(raw) {
+  const emailM = raw.match(/\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/i);
+  const telM   = raw.match(/\b(0[67][\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}|\+33[\s.\-]?\d[\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2})\b/);
+  const dateSlash = raw.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
+  const months = {'janvier':1,'fevrier':2,'mars':3,'avril':4,'mai':5,'juin':6,'juillet':7,'aout':8,'septembre':9,'octobre':10,'novembre':11,'decembre':12};
+  let frDate = null;
+  const rawN = normText(raw);
+  for (const [m, n] of Object.entries(months)) {
+    const r = rawN.match(new RegExp('\\b(\\d{1,2})\\s+' + m + '\\s+(\\d{4})\\b'));
+    if (r) { frDate = { d: parseInt(r[1]), mo: n, y: parseInt(r[2]) }; break; }
+  }
+  return { emailM, telM, dateSlash, frDate };
+}
+
+function applyClientInfo(raw) {
+  const { emailM, telM, dateSlash, frDate } = extractClientInfo(raw);
+  if (emailM && !document.getElementById('c-email').value)
+    document.getElementById('c-email').value = emailM[0];
+  if (telM && !document.getElementById('c-tel').value)
+    document.getElementById('c-tel').value = telM[0];
+  if (frDate && !document.getElementById('c-date').value) {
+    document.getElementById('c-date').value =
+      `${frDate.y}-${String(frDate.mo).padStart(2,'0')}-${String(frDate.d).padStart(2,'0')}`;
+  } else if (dateSlash && !document.getElementById('c-date').value) {
+    const [, d, mo, y] = dateSlash;
+    document.getElementById('c-date').value =
+      `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+}
+
+function analyzeInput() {
+  const raw = document.getElementById('ai-input').value.trim();
+  if (!raw) { setAIStatus('Veuillez entrer une description.', 'warn'); return; }
+
+  const matched = parseDescription(raw);
+  const count = Object.keys(matched).length;
+
+  if (!count) {
+    setAIStatus('Aucune prestation reconnue. Essayez : « arche fleurie », « centres de table classiques », « bouquet de mariée »…', 'warn');
+    return;
+  }
+
+  Object.entries(matched).forEach(([id, qty]) => setQty(id, qty));
+  applyClientInfo(raw);
+
+  CATEGORIES.forEach((cat, i) => {
+    if (cat.items.some(it => matched[it.id])) {
+      const body = document.getElementById(`cat-${i}`);
+      const tog  = document.getElementById(`toggle-${i}`);
+      if (!body.classList.contains('open')) {
+        body.classList.add('open');
+        tog.classList.add('open');
+      }
+    }
+  });
+
+  const preview = Object.entries(matched).slice(0, 4)
+    .map(([id, qty]) => { const it = findItem(id); return it ? `${qty}× ${it.name}` : ''; })
+    .filter(Boolean).join(', ');
+  const more = count > 4 ? ` + ${count - 4} autre${count - 4 > 1 ? 's' : ''}` : '';
+  setAIStatus(`✓ ${count} prestation${count > 1 ? 's' : ''} identifiée${count > 1 ? 's' : ''} : ${preview}${more}.`, 'success');
+
+  document.getElementById('categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function clearAIInput() {
+  document.getElementById('ai-input').value = '';
+  setAIStatus('', '');
+}
+
+function setAIStatus(msg, type) {
+  const el = document.getElementById('ai-status');
+  el.textContent = msg;
+  el.className = 'ai-status' + (type ? ' ' + type : '');
+}
+
+// ===== MICROPHONE =====
+let _recognition = null;
+let _isRecording = false;
+let _finalTranscript = '';
+
+function toggleMic() {
+  if (_isRecording) stopMic(); else startMic();
+}
+
+function startMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    setAIStatus('Micro non disponible sur ce navigateur. Utilisez Chrome, Edge ou Safari.', 'warn');
+    return;
+  }
+  _finalTranscript = document.getElementById('ai-input').value;
+  _recognition = new SR();
+  _recognition.lang = 'fr-FR';
+  _recognition.continuous = true;
+  _recognition.interimResults = true;
+
+  _recognition.onstart = () => {
+    _isRecording = true;
+    updateMicUI();
+    setAIStatus('🎙 Écoute en cours… Parlez maintenant.', 'recording');
+  };
+
+  _recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) _finalTranscript += e.results[i][0].transcript + ' ';
+      else interim = e.results[i][0].transcript;
+    }
+    document.getElementById('ai-input').value = _finalTranscript + interim;
+  };
+
+  _recognition.onerror = (e) => {
+    if (e.error === 'not-allowed')
+      setAIStatus('Accès au microphone refusé. Autorisez le micro dans les paramètres du navigateur.', 'warn');
+    else if (e.error !== 'no-speech')
+      setAIStatus('Erreur microphone : ' + e.error, 'warn');
+    stopMic();
+  };
+
+  // Auto-restart needed for iOS Safari which stops after a pause
+  _recognition.onend = () => {
+    if (_isRecording) {
+      try { _recognition.start(); } catch(ex) { stopMic(); }
+    }
+  };
+
+  try { _recognition.start(); }
+  catch(e) { setAIStatus('Impossible de démarrer le microphone.', 'warn'); }
+}
+
+function stopMic() {
+  _isRecording = false;
+  if (_recognition) { try { _recognition.stop(); } catch(e) {} _recognition = null; }
+  updateMicUI();
+  if (document.getElementById('ai-input').value.trim())
+    setAIStatus('Enregistrement terminé. Cliquez sur « Générer le devis » pour analyser.', '');
+  else
+    setAIStatus('', '');
+}
+
+function updateMicUI() {
+  const btn = document.getElementById('ai-mic-btn');
+  btn.classList.toggle('recording', _isRecording);
+  btn.title = _isRecording ? 'Arrêter l\'enregistrement' : 'Dicter par microphone';
+}
+
+renderCategories();
+renderSidebar();
+toggleCat(0);
+
+// ===== SETTINGS =====
+const SETTINGS_KEY = 'devisai_settings';
+
+const SETTINGS_DEFAULTS = {
+  name:     'Fleurs de Mariage',
+  tagline:  'Votre fleuriste événementiel',
+  address:  '123 rue des Roses',
+  city:     '75001 Paris',
+  phone:    '',
+  email:    'contact@fleursmariage.fr',
+  tva:      20,
+  validity: 30,
+  deposit:  30,
+  siret:    ''
+};
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? Object.assign({}, SETTINGS_DEFAULTS, JSON.parse(raw)) : Object.assign({}, SETTINGS_DEFAULTS);
+  } catch(e) { return Object.assign({}, SETTINGS_DEFAULTS); }
+}
+
+function persistSettings(cfg) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
+
+function getSettings() { return loadSettings(); }
+
+function openSettings() {
+  const cfg = loadSettings();
+  document.getElementById('s-name').value       = cfg.name;
+  document.getElementById('s-tagline').value    = cfg.tagline;
+  document.getElementById('s-address').value    = cfg.address;
+  document.getElementById('s-city').value       = cfg.city;
+  document.getElementById('s-phone').value      = cfg.phone;
+  document.getElementById('s-email').value      = cfg.email;
+  document.getElementById('s-tva').value        = cfg.tva;
+  document.getElementById('s-validity').value   = cfg.validity;
+  document.getElementById('s-deposit').value    = cfg.deposit;
+  document.getElementById('s-siret').value      = cfg.siret;
+  const cloudEmail = localStorage.getItem('devisai_cloud_email') || '';
+  const cloudPin   = localStorage.getItem('devisai_cloud_pin')   || '';
+  document.getElementById('s-cloud-email').value = cloudEmail;
+  document.getElementById('s-cloud-pin').value   = cloudPin;
+  if (cloudEmail && cloudPin) setCloudDot('ok', 'Synchronisation active — ' + cloudEmail);
+  else setCloudDot('', 'Entrez votre email et PIN pour activer la synchronisation cloud');
+  document.getElementById('s-saved-msg').classList.remove('show');
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function _readSettingsForm() {
+  return {
+    name:     document.getElementById('s-name').value.trim()     || SETTINGS_DEFAULTS.name,
+    tagline:  document.getElementById('s-tagline').value.trim()  || SETTINGS_DEFAULTS.tagline,
+    address:  document.getElementById('s-address').value.trim()  || SETTINGS_DEFAULTS.address,
+    city:     document.getElementById('s-city').value.trim()     || SETTINGS_DEFAULTS.city,
+    phone:    document.getElementById('s-phone').value.trim(),
+    email:    document.getElementById('s-email').value.trim()    || SETTINGS_DEFAULTS.email,
+    tva:      parseFloat(document.getElementById('s-tva').value)     || SETTINGS_DEFAULTS.tva,
+    validity: parseInt(document.getElementById('s-validity').value)  || SETTINGS_DEFAULTS.validity,
+    deposit:  parseInt(document.getElementById('s-deposit').value)   || SETTINGS_DEFAULTS.deposit,
+    siret:    document.getElementById('s-siret').value.trim()
+  };
+}
+
+function saveSettings() {
+  const cfg = _readSettingsForm();
+  const cloudEmail = document.getElementById('s-cloud-email').value.trim();
+  const cloudPin   = document.getElementById('s-cloud-pin').value.trim();
+  persistSettings(cfg);
+  localStorage.setItem('devisai_settings_ts', String(Date.now()));
+  if (cloudEmail && cloudPin) {
+    localStorage.setItem('devisai_cloud_email', cloudEmail);
+    localStorage.setItem('devisai_cloud_pin',   cloudPin);
+    setCloudDot('syncing', 'Synchronisation en cours…');
+    cloudSave(cfg, cloudEmail, cloudPin);
+  } else if (cloudEmail && !cloudPin) {
+    setCloudDot('error', 'Entrez un code PIN pour activer la synchronisation');
+    return;
+  }
+  const msg = document.getElementById('s-saved-msg');
+  msg.classList.add('show');
+  setTimeout(() => { msg.classList.remove('show'); closeSettings(); }, 1200);
+}
+
+document.getElementById('settings-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settings-overlay')) closeSettings();
+});
+
+// ===== CLOUD SYNC — Firebase Realtime Database REST =====
+// URL de la base de données Firebase (configurée une seule fois par l'administrateur)
+const CLOUD_DB = 'https://devis-ai-fleurs-default-rtdb.europe-west1.firebasedatabase.app';
+const CLOUD_SALT = 'devisai2026';
+
+async function _emailKey(email, pin) {
+  const raw = email.toLowerCase().trim() + ':' + pin.trim() + ':' + CLOUD_SALT;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0, 28);
+}
+
+async function cloudSave(cfg, email, pin) {
+  if (!email || !pin) return;
+  try {
+    setHeaderSync('syncing', 'Synchronisation…');
+    const key = await _emailKey(email, pin);
+    const r = await fetch(`${CLOUD_DB}/devisai/${key}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...cfg, _t: Date.now() })
+    });
+    if (!r.ok) throw new Error(r.status);
+    setHeaderSync('ok', 'Synchronisé');
+    setCloudDot('ok', 'Synchronisé avec le cloud');
+  } catch(e) {
+    setHeaderSync('error', 'Hors ligne');
+    setCloudDot('error', 'Erreur de synchronisation');
+  }
+}
+
+async function cloudLoad(email, pin) {
+  if (!email || !pin) return null;
+  try {
+    const key = await _emailKey(email, pin);
+    const r = await fetch(`${CLOUD_DB}/devisai/${key}.json`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function initCloudSync() {
+  const email = localStorage.getItem('devisai_cloud_email');
+  const pin   = localStorage.getItem('devisai_cloud_pin');
+  if (!email || !pin) return;
+  setHeaderSync('syncing', 'Chargement…');
+  const remote = await cloudLoad(email, pin);
+  if (!remote || !remote._t) { setHeaderSync('ok', 'Synchronisé'); return; }
+  const localTs = parseInt(localStorage.getItem('devisai_settings_ts') || '0');
+  if (remote._t > localTs) {
+    const { _t, ...cfg } = remote;
+    persistSettings(cfg);
+    localStorage.setItem('devisai_settings_ts', String(remote._t));
+  }
+  setHeaderSync('ok', 'Synchronisé');
+}
+
+function setHeaderSync(state, label) {
+  const wrap = document.getElementById('header-sync');
+  const dot  = document.getElementById('header-dot');
+  const lbl  = document.getElementById('header-sync-label');
+  if (!wrap) return;
+  wrap.style.display = 'flex';
+  dot.className = 'cloud-dot ' + state;
+  lbl.textContent = label;
+  if (state === 'ok') setTimeout(() => { wrap.style.display = 'none'; }, 3000);
+}
+
+function setCloudDot(state, label) {
+  const dot = document.getElementById('s-cloud-dot');
+  const lbl = document.getElementById('s-cloud-label');
+  if (dot) { dot.className = 'cloud-dot ' + state; }
+  if (lbl) { lbl.textContent = label; lbl.style.color = state === 'error' ? '#e53e3e' : state === 'ok' ? '#2f855a' : 'var(--muted)'; }
+}
+
+// Init cloud sync on load
+initCloudSync();
+</script>
+</body>
+</html>
